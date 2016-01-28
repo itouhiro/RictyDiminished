@@ -2,11 +2,11 @@
 
 #
 # Ricty Generator
-ricty_version="4.0.0"
+ricty_version="4.0.1"
 #
 
 #
-# Copyright (c) 2011-2015, Yasunori Yusa
+# Copyright (c) 2011-2016, Yasunori Yusa
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -255,14 +255,14 @@ then
         exit 1
     fi
     # Check filename
-    [ "$(basename $input_inconsolata_regular)" != "Inconsolata-Regular.ttf" ] \
-        && echo "Warning: ${input_inconsolata_regular} is really Inconsolata Regular?" >&2
-    [ "$(basename $input_inconsolata_bold)" != "Inconsolata-Bold.ttf" ] \
-        && echo "Warning: ${input_inconsolata_regular} is really Inconsolata Bold?" >&2
-    [ "$(basename $input_migu1m_regular)" != "migu-1m-regular.ttf" ] \
-        && echo "Warning: ${input_migu1m_regular} is really Migu 1M Regular?" >&2
-    [ "$(basename $input_migu1m_bold)" != "migu-1m-bold.ttf" ] \
-        && echo "Warning: ${input_migu1m_bold} is really Migu 1M Bold?" >&2
+    [ "$(basename $input_inconsolata_regular)" != "Inconsolata-Regular.ttf" ] &&
+        echo "Warning: ${input_inconsolata_regular} is really Inconsolata Regular?" >&2
+    [ "$(basename $input_inconsolata_bold)" != "Inconsolata-Bold.ttf" ] &&
+        echo "Warning: ${input_inconsolata_regular} is really Inconsolata Bold?" >&2
+    [ "$(basename $input_migu1m_regular)" != "migu-1m-regular.ttf" ] &&
+        echo "Warning: ${input_migu1m_regular} is really Migu 1M Regular?" >&2
+    [ "$(basename $input_migu1m_bold)" != "migu-1m-bold.ttf" ] &&
+        echo "Warning: ${input_migu1m_bold} is really Migu 1M Bold?" >&2
 else
     ricty_generator_help
 fi
@@ -302,7 +302,7 @@ output_list = ["${modified_inconsolata_regular}", "${modified_inconsolata_bold}"
 i = 0
 while (i < SizeOf(input_list))
     # Open Inconsolata
-    Print("Find " + input_list[i] + ".")
+    Print("Open " + input_list[i] + ".")
     Open(input_list[i])
 
     # Scale to standard glyph size
@@ -310,6 +310,7 @@ while (i < SizeOf(input_list))
 
     # Remove ambiguous glyphs
     if ("$fullwidth_ambiguous_flag" == "true")
+        Print("Remove ambiguous glyphs.")
         Select(0u00a4); Clear() # currency
         Select(0u00a7); Clear() # section
         Select(0u00a8); Clear() # dieresis
@@ -332,9 +333,11 @@ while (i < SizeOf(input_list))
         Select(0u2193); Clear() # downarrow
     endif
 
-    # Pre-process for merging
+    # Process for merging
+    Print("Process for merging.")
     SelectWorthOutputting()
-    ClearInstrs(); UnlinkReference()
+    ClearInstrs()
+    UnlinkReference()
 
     # Save modified Inconsolata
     Print("Save " + output_list[i] + ".")
@@ -363,19 +366,26 @@ output_list = ["${modified_migu1m_regular}", "${modified_migu1m_bold}"]
 i = 0
 while (i < SizeOf(input_list))
     # Open Migu 1M
-    Print("Find " + input_list[i] + ".")
+    Print("Open " + input_list[i] + ".")
     Open(input_list[i])
 
-    # Scale Migu 1M to standard glyph size
+    # Scale to standard glyph size
     ScaleToEm(860, 140)
-    SelectWorthOutputting()
-    ClearInstrs(); UnlinkReference()
+
+    # Scale down all glyphs
     if ("$scaling_down_flag" == "true")
-        Print("While scaling " + input_list[i]:t + ", wait a little...")
+        Print("Scale down all glyphs (it may takes a little time).")
+        SelectWorthOutputting()
         SetWidth(-1, 1); Scale(91, 91, 0, 0); SetWidth(110, 2); SetWidth(1, 1)
         Move(23, 0); SetWidth(-23, 1)
+        RoundToInt(); RemoveOverlap(); RoundToInt()
     endif
-    RoundToInt(); RemoveOverlap(); RoundToInt()
+
+    # Process for merging
+    Print("Process for merging.")
+    SelectWorthOutputting()
+    ClearInstrs()
+    UnlinkReference()
 
     # Save modified Migu 1M
     Print("Save " + output_list[i] + ".")
@@ -464,26 +474,31 @@ while (i < SizeOf(fontstyle_list))
     SetOS2Value("HHeadLineGap",            0)
     SetPanose([2, 11, panoseweight_list[i], 9, 2, 2, 3, 2, 2, 7])
 
-    # Merge fonts
-    Print("While merging " + inconsolata_list[i]:t \\
-          + " with " + migu1m_list[i]:t + ", wait a little...")
+    # Merge Inconsolata with Migu 1M
+    Print("Merge " + inconsolata_list[i]:t \\
+          + " with " + migu1m_list[i]:t + ".")
     MergeFonts(inconsolata_list[i])
     MergeFonts(migu1m_list[i])
 
     # Edit zenkaku space (from ballot box and heavy greek cross)
-    if ("$zenkaku_space_glyph" == "")
-        Select(0u2610); Copy(); Select(0u3000); Paste()
-        Select(0u271a); Copy(); Select(0u3000); PasteInto()
-        OverlapIntersect()
-    else
-        Select(${zenkaku_space_glyph}); Copy(); Select(0u3000); Paste()
+    if ("$zenkaku_space_glyph" != "0u3000")
+        Print("Edit zenkaku space.")
+        if ("$zenkaku_space_glyph" == "")
+            Select(0u2610); Copy(); Select(0u3000); Paste()
+            Select(0u271a); Copy(); Select(0u3000); PasteInto()
+            OverlapIntersect()
+        else
+            Select(${zenkaku_space_glyph}); Copy(); Select(0u3000); Paste()
+        endif
     endif
 
     # Edit zenkaku comma and period
+    Print("Edit zenkaku comma and period.")
     Select(0uff0c); Scale(150, 150, 100, 0); SetWidth(1000)
     Select(0uff0e); Scale(150, 150, 100, 0); SetWidth(1000)
 
     # Edit zenkaku colon and semicolon
+    Print("Edit zenkaku colon and semicolon.")
     Select(0uff0c); Copy(); Select(0uff1b); Paste()
     Select(0uff0e); Copy(); Select(0uff1b); PasteWithOffset(0, 400)
     CenterInWidth()
@@ -491,6 +506,7 @@ while (i < SizeOf(fontstyle_list))
     CenterInWidth()
 
     # Edit zenkaku brackets
+    Print("Edit zenkaku brackets.")
     Select(0u0028); Copy(); Select(0uff08); Paste(); Move(250, 0); SetWidth(1000) # (
     Select(0u0029); Copy(); Select(0uff09); Paste(); Move(250, 0); SetWidth(1000) # )
     Select(0u005b); Copy(); Select(0uff3b); Paste(); Move(250, 0); SetWidth(1000) # [
@@ -500,23 +516,23 @@ while (i < SizeOf(fontstyle_list))
     Select(0u003c); Copy(); Select(0uff1c); Paste(); Move(250, 0); SetWidth(1000) # <
     Select(0u003e); Copy(); Select(0uff1e); Paste(); Move(250, 0); SetWidth(1000) # >
 
-    # Edit en dash
+    # Edit en and em dashes
+    Print("Edit en and em dashes.")
     Select(0u2013); Copy()
     PasteWithOffset(200, 0); PasteWithOffset(-200, 0)
     OverlapIntersect()
-
-    # Edit em dash
     Select(0u2014); Copy()
     PasteWithOffset(490, 0); PasteWithOffset(-490, 0)
     OverlapIntersect()
 
-    # Detach and remove .notdef
+    # Proccess before saving
+    Print("Process before saving (it may takes a little time).")
     Select(".notdef")
     DetachAndRemoveGlyphs()
-
-    # Post-proccess
     SelectWorthOutputting()
     RoundToInt(); RemoveOverlap(); RoundToInt()
+    AutoHint()
+    AutoInstr()
 
     # Save Ricty
     if (fontfamilysuffix != "")
