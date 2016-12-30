@@ -2,11 +2,11 @@
 
 #
 # Ricty Generator
-ricty_version="4.0.1"
+ricty_version="4.1.0"
 #
 
 #
-# Copyright (c) 2011-2016, Yasunori Yusa
+# Copyright (c) 2011-2016 Yasunori Yusa
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -33,11 +33,11 @@ ricty_version="4.0.1"
 
 #
 # This script is to generate ``Ricty'' font from Inconsolata and Migu 1M.
-# It requires 2-5 minutes to generate Ricty. Owing to SIL Open Font License
+# It requires a few minutes to generate Ricty. Owing to SIL Open Font License
 # Version 1.1 section 5, it is PROHIBITED to distribute the generated font.
 # This script supports following versions of inputting fonts.
-# * Inconsolata Version 1.016 or later
-# * Migu 1M     Version 2015.0712 or later
+# * Inconsolata 2.000 or later
+# * Migu 1M 2015.0712 or later
 #
 # Usage:
 #
@@ -48,7 +48,7 @@ ricty_version="4.0.1"
 #    Other distros: Get from https://fontforge.github.io/
 #
 # 2. Get Inconsolata-Regular/Bold.otf
-#    from https://www.google.com/fonts/specimen/Inconsolata (release)
+#    from https://fonts.google.com/specimen/Inconsolata (release)
 #    or from https://github.com/google/fonts/tree/master/ofl/inconsolata (upstream)
 #
 # 3. Get migu-1m-regular/bold.ttf
@@ -57,7 +57,7 @@ ricty_version="4.0.1"
 # 4. Run this script
 #        % sh ricty_generator.sh auto
 #    or
-#        % sh ricty_generator.sh Inconsolata-Regular.ttf Inconsolata-Bold.ttf migu-1m-regular.ttf migu-1m-bold.ttf
+#        % sh ricty_generator.sh Inconsolata-{Regular,Bold}.ttf migu-1m-{regular,bold}.ttf
 #
 # 5. Install Ricty
 #        % cp -f Ricty*.ttf ~/.fonts/
@@ -89,6 +89,9 @@ leaving_tmp_flag="false"
 fullwidth_ambiguous_flag="true"
 scaling_down_flag="true"
 
+# Set non-Discorded characters
+non_discorded_characters=""
+
 # Set filenames
 modified_inconsolata_generator="modified_inconsolata_generator.pe"
 modified_inconsolata_regular="Modified-Inconsolata-Regular.sfd"
@@ -97,6 +100,7 @@ modified_migu1m_generator="modified_migu1m_generator.pe"
 modified_migu1m_regular="Modified-migu-1m-regular.sfd"
 modified_migu1m_bold="Modified-migu-1m-bold.sfd"
 ricty_generator="ricty_generator.pe"
+ricty_discord_generator="ricty_discord_generator.pe"
 
 ########################################
 # Pre-process
@@ -106,11 +110,11 @@ ricty_generator="ricty_generator.pe"
 cat << _EOT_
 Ricty Generator ${ricty_version}
 
-Copyright (c) 2011-2015, Yasunori Yusa
+Copyright (c) 2011-2016 Yasunori Yusa
 All rights reserved.
 
 This script is to generate \`\`Ricty'' font from Inconsolata and Migu 1M.
-It requires 2-5 minutes to generate Ricty. Owing to SIL Open Font License
+It requires a few minutes to generate Ricty. Owing to SIL Open Font License
 Version 1.1 section 5, it is PROHIBITED to distribute the generated font.
 
 _EOT_
@@ -119,14 +123,14 @@ _EOT_
 ricty_generator_help()
 {
     echo "Usage: ricty_generator.sh [options] auto"
-    echo "       ricty_generator.sh [options] Inconsolata.otf migu-1m-regular.ttf migu-1m-bold.ttf"
+    echo "       ricty_generator.sh [options] Inconsolata-{Regular,Bold}.ttf migu-1m-{regular,bold}.ttf"
     echo ""
     echo "Options:"
     echo "  -h                     Display this information"
     echo "  -V                     Display version number"
     echo "  -f /path/to/fontforge  Set path to fontforge command"
-    echo "  -v                     Enable verbose mode (display fontforge's warnings)"
-    echo "  -l                     Leave (NOT remove) temporary files"
+    echo "  -v                     Enable verbose mode (display fontforge's warning)"
+    echo "  -l                     Leave (do NOT remove) temporary files"
     echo "  -n string              Set fontfamily suffix (\`\`Ricty string'')"
     echo "  -w                     Widen line space"
     echo "  -W                     Widen line space extremely"
@@ -134,11 +138,12 @@ ricty_generator_help()
     echo "  -z                     Disable visible zenkaku space"
     echo "  -a                     Disable fullwidth ambiguous charactors"
     echo "  -s                     Disable scaling down Migu 1M"
+    echo "  -d characters          Set non-Discorded characters in Ricty Discord"
     exit 0
 }
 
 # Get options
-while getopts hVf:vln:wWbBZ:zas OPT
+while getopts hVf:vln:wWbBZ:zasd: OPT
 do
     case "$OPT" in
         "h" )
@@ -149,14 +154,14 @@ do
             ;;
         "f" )
             echo "Option: Set path to fontforge command: ${OPTARG}"
-            fontforge_command="$OPTARG"
+            fontforge_command="${OPTARG}"
             ;;
         "v" )
             echo "Option: Enable verbose mode"
             redirection_stderr="/dev/stderr"
             ;;
         "l" )
-            echo "Option: Leave (NOT remove) temporary files"
+            echo "Option: Leave (do NOT remove) temporary files"
             leaving_tmp_flag="true"
             ;;
         "n" )
@@ -188,6 +193,10 @@ do
         "s" )
             echo "Option: Disable scaling down Migu 1M"
             scaling_down_flag="false"
+            ;;
+        "d" )
+            echo "Option: Set non-Discorded characters in Ricty Discord: ${OPTARG}"
+            non_discorded_characters="${OPTARG}"
             ;;
         * )
             exit 1
@@ -311,26 +320,195 @@ while (i < SizeOf(input_list))
     # Remove ambiguous glyphs
     if ("$fullwidth_ambiguous_flag" == "true")
         Print("Remove ambiguous glyphs.")
-        Select(0u00a4); Clear() # currency
-        Select(0u00a7); Clear() # section
-        Select(0u00a8); Clear() # dieresis
-        Select(0u00ad); Clear() # soft hyphen
-        Select(0u00b0); Clear() # degree
-        Select(0u00b1); Clear() # plus-minus
-        Select(0u00b4); Clear() # acute
-        Select(0u00b6); Clear() # pilcrow
-        Select(0u00d7); Clear() # multiply
-        Select(0u00f7); Clear() # divide
-        Select(0u2018); Clear() # left '
-        Select(0u2019); Clear() # right '
-        Select(0u201c); Clear() # left "
-        Select(0u201d); Clear() # right "
-        Select(0u2020); Clear() # dagger
-        Select(0u2021); Clear() # double dagger
-        Select(0u2026); Clear() # ...
-        Select(0u2122); Clear() # TM
-        Select(0u2191); Clear() # uparrow
-        Select(0u2193); Clear() # downarrow
+        Select(0u00a1); Clear()
+        Select(0u00a4); Clear()
+        Select(0u00a7); Clear()
+        Select(0u00a8); Clear()
+        Select(0u00aa); Clear()
+        Select(0u00ad); Clear()
+        Select(0u00ae); Clear()
+        Select(0u00b0); Clear()
+        Select(0u00b1); Clear()
+        Select(0u00b2, 0u00b3); Clear()
+        Select(0u00b4); Clear()
+        Select(0u00b6, 0u00b7); Clear()
+        Select(0u00b8); Clear()
+        Select(0u00b9); Clear()
+        Select(0u00ba); Clear()
+        Select(0u00bc, 0u00be); Clear()
+        Select(0u00bf); Clear()
+        Select(0u00c6); Clear()
+        Select(0u00d0); Clear()
+        Select(0u00d7); Clear()
+        Select(0u00d8); Clear()
+        Select(0u00de, 0u00e1); Clear()
+        Select(0u00e6); Clear()
+        Select(0u00e8, 0u00ea); Clear()
+        Select(0u00ec, 0u00ed); Clear()
+        Select(0u00f0); Clear()
+        Select(0u00f2, 0u00f3); Clear()
+        Select(0u00f7); Clear()
+        Select(0u00f8, 0u00fa); Clear()
+        Select(0u00fc); Clear()
+        Select(0u00fe); Clear()
+        Select(0u0101); Clear()
+        Select(0u0111); Clear()
+        Select(0u0113); Clear()
+        Select(0u011b); Clear()
+        Select(0u0126, 0u0127); Clear()
+        Select(0u012b); Clear()
+        Select(0u0131, 0u0133); Clear()
+        Select(0u0138); Clear()
+        Select(0u013f, 0u0142); Clear()
+        Select(0u0144); Clear()
+        Select(0u0148, 0u014b); Clear()
+        Select(0u014d); Clear()
+        Select(0u0152, 0u0153); Clear()
+        Select(0u0166, 0u0167); Clear()
+        Select(0u016b); Clear()
+        Select(0u01ce); Clear()
+        Select(0u01d0); Clear()
+        Select(0u01d2); Clear()
+        Select(0u01d4); Clear()
+        Select(0u01d6); Clear()
+        Select(0u01d8); Clear()
+        Select(0u01da); Clear()
+        Select(0u01dc); Clear()
+        Select(0u0251); Clear()
+        Select(0u0261); Clear()
+        Select(0u02c4); Clear()
+        Select(0u02c7); Clear()
+        Select(0u02c9, 0u02cb); Clear()
+        Select(0u02cd); Clear()
+        Select(0u02d0); Clear()
+        Select(0u02d8, 0u02db); Clear()
+        Select(0u02dd); Clear()
+        Select(0u02df); Clear()
+        Select(0u0300, 0u036f); Clear()
+        Select(0u0391, 0u03a1); Clear()
+        Select(0u03a3, 0u03a9); Clear()
+        Select(0u03b1, 0u03c1); Clear()
+        Select(0u03c3, 0u03c9); Clear()
+        Select(0u0401); Clear()
+        Select(0u0410, 0u044f); Clear()
+        Select(0u0451); Clear()
+        Select(0u2010); Clear()
+        Select(0u2013, 0u2015); Clear()
+        Select(0u2016); Clear()
+        Select(0u2018); Clear()
+        Select(0u2019); Clear()
+        Select(0u201c); Clear()
+        Select(0u201d); Clear()
+        Select(0u2020, 0u2022); Clear()
+        Select(0u2024, 0u2027); Clear()
+        Select(0u2030); Clear()
+        Select(0u2032, 0u2033); Clear()
+        Select(0u2035); Clear()
+        Select(0u203b); Clear()
+        Select(0u203e); Clear()
+        Select(0u2074); Clear()
+        Select(0u207f); Clear()
+        Select(0u2081, 0u2084); Clear()
+        Select(0u20ac); Clear()
+        Select(0u2103); Clear()
+        Select(0u2105); Clear()
+        Select(0u2109); Clear()
+        Select(0u2113); Clear()
+        Select(0u2116); Clear()
+        Select(0u2121, 0u2122); Clear()
+        Select(0u2126); Clear()
+        Select(0u212b); Clear()
+        Select(0u2153, 0u2154); Clear()
+        Select(0u215b, 0u215e); Clear()
+        Select(0u2160, 0u216b); Clear()
+        Select(0u2170, 0u2179); Clear()
+        Select(0u2189); Clear()
+        Select(0u2190, 0u2194); Clear()
+        Select(0u2195, 0u2199); Clear()
+        Select(0u21b8, 0u21b9); Clear()
+        Select(0u21d2); Clear()
+        Select(0u21d4); Clear()
+        Select(0u21e7); Clear()
+        Select(0u2200); Clear()
+        Select(0u2202, 0u2203); Clear()
+        Select(0u2207, 0u2208); Clear()
+        Select(0u220b); Clear()
+        Select(0u220f); Clear()
+        Select(0u2211); Clear()
+        Select(0u2215); Clear()
+        Select(0u221a); Clear()
+        Select(0u221d, 0u2220); Clear()
+        Select(0u2223); Clear()
+        Select(0u2225); Clear()
+        Select(0u2227, 0u222c); Clear()
+        Select(0u222e); Clear()
+        Select(0u2234, 0u2237); Clear()
+        Select(0u223c, 0u223d); Clear()
+        Select(0u2248); Clear()
+        Select(0u224c); Clear()
+        Select(0u2252); Clear()
+        Select(0u2260, 0u2261); Clear()
+        Select(0u2264, 0u2267); Clear()
+        Select(0u226a, 0u226b); Clear()
+        Select(0u226e, 0u226f); Clear()
+        Select(0u2282, 0u2283); Clear()
+        Select(0u2286, 0u2287); Clear()
+        Select(0u2295); Clear()
+        Select(0u2299); Clear()
+        Select(0u22a5); Clear()
+        Select(0u22bf); Clear()
+        Select(0u2312); Clear()
+        Select(0u2460, 0u249b); Clear()
+        Select(0u249c, 0u24e9); Clear()
+        Select(0u24eb, 0u24ff); Clear()
+        Select(0u2500, 0u254b); Clear()
+        Select(0u2550, 0u2573); Clear()
+        Select(0u2580, 0u258f); Clear()
+        Select(0u2592, 0u2595); Clear()
+        Select(0u25a0, 0u25a1); Clear()
+        Select(0u25a3, 0u25a9); Clear()
+        Select(0u25b2, 0u25b3); Clear()
+        Select(0u25b6); Clear()
+        Select(0u25b7); Clear()
+        Select(0u25bc, 0u25bd); Clear()
+        Select(0u25c0); Clear()
+        Select(0u25c1); Clear()
+        Select(0u25c6, 0u25c8); Clear()
+        Select(0u25cb); Clear()
+        Select(0u25ce, 0u25d1); Clear()
+        Select(0u25e2, 0u25e5); Clear()
+        Select(0u25ef); Clear()
+        Select(0u2605, 0u2606); Clear()
+        Select(0u2609); Clear()
+        Select(0u260e, 0u260f); Clear()
+        Select(0u261c); Clear()
+        Select(0u261e); Clear()
+        Select(0u2640); Clear()
+        Select(0u2642); Clear()
+        Select(0u2660, 0u2661); Clear()
+        Select(0u2663, 0u2665); Clear()
+        Select(0u2667, 0u266a); Clear()
+        Select(0u266c, 0u266d); Clear()
+        Select(0u266f); Clear()
+        Select(0u269e, 0u269f); Clear()
+        Select(0u26bf); Clear()
+        Select(0u26c6, 0u26cd); Clear()
+        Select(0u26cf, 0u26d3); Clear()
+        Select(0u26d5, 0u26e1); Clear()
+        Select(0u26e3); Clear()
+        Select(0u26e8, 0u26e9); Clear()
+        Select(0u26eb, 0u26f1); Clear()
+        Select(0u26f4); Clear()
+        Select(0u26f6, 0u26f9); Clear()
+        Select(0u26fb, 0u26fc); Clear()
+        Select(0u26fe, 0u26ff); Clear()
+        Select(0u273d); Clear()
+        Select(0u2776, 0u277f); Clear()
+        Select(0u2b56, 0u2b59); Clear()
+        Select(0u3248, 0u324f); Clear()
+        Select(0ue000, 0uf8ff); Clear()
+        Select(0ufe00, 0ufe0f); Clear()
+        Select(0ufffd); Clear()
     endif
 
     # Process for merging
@@ -342,7 +520,8 @@ while (i < SizeOf(input_list))
     # Save modified Inconsolata
     Print("Save " + output_list[i] + ".")
     Save("${tmpdir}/" + output_list[i])
-i += 1
+
+    i += 1
 endloop
 
 Quit()
@@ -374,7 +553,7 @@ while (i < SizeOf(input_list))
 
     # Scale down all glyphs
     if ("$scaling_down_flag" == "true")
-        Print("Scale down all glyphs (it may takes a little time).")
+        Print("Scale down all glyphs (it may take a few minutes).")
         SelectWorthOutputting()
         SetWidth(-1, 1); Scale(91, 91, 0, 0); SetWidth(110, 2); SetWidth(1, 1)
         Move(23, 0); SetWidth(-23, 1)
@@ -391,7 +570,8 @@ while (i < SizeOf(input_list))
     Print("Save " + output_list[i] + ".")
     Save("${tmpdir}/" + output_list[i])
     Close()
-i += 1
+
+    i += 1
 endloop
 
 Quit()
@@ -417,11 +597,10 @@ fontfamilysuffix  = "$ricty_familyname_suffix"
 fontstyle_list    = ["Regular", "Bold"]
 fontweight_list   = [400,       700]
 panoseweight_list = [5,         8]
-copyright         = "Copyright (c) 2011-2015 Yasunori Yusa\n" \\
-                  + "Copyright (c) 2006-2012 Raph Levien\n" \\
-                  + "Copyright (c) 2011-2012 Cyreal (cyreal.org)\n" \\
-                  + "Copyright (c) 2006-2015 itouhiro\n" \\
-                  + "Copyright (c) 2002-2015 M+ FONTS PROJECT\n" \\
+copyright         = "Copyright (c) 2011-2016 Yasunori Yusa\n" \\
+                  + "Copyright (c) 2006 The Inconsolata Project Authors\n" \\
+                  + "Copyright (c) 2015 itouhiro\n" \\
+                  + "Copyright (c) 2015 M+ FONTS PROJECT\n" \\
                   + "Copyright (c) 2003-2011 Information-technology Promotion Agency, Japan (IPA)\n" \\
                   + "SIL Open Font License Version 1.1 (http://scripts.sil.org/ofl)\n" \\
                   + "IPA Font License Agreement v1.0 (http://ipafont.ipa.go.jp/ipa_font_license_v1.html)"
@@ -526,7 +705,7 @@ while (i < SizeOf(fontstyle_list))
     OverlapIntersect()
 
     # Proccess before saving
-    Print("Process before saving (it may takes a little time).")
+    Print("Process before saving (it may take a few minutes).")
     Select(".notdef")
     DetachAndRemoveGlyphs()
     SelectWorthOutputting()
@@ -543,8 +722,308 @@ while (i < SizeOf(fontstyle_list))
         Generate(fontfamily + "-" + fontstyle_list[i] + ".ttf", "", 0x84)
     endif
     Close()
-i += 1
+
+    i += 1
 endloop
+
+Quit()
+_EOT_
+
+########################################
+# Generate script for Ricty Discord
+########################################
+
+cat > ${tmpdir}/${ricty_discord_generator} << _EOT_
+#!$fontforge_command -script
+
+# Get arguments
+if (\$argc != 3)
+   Print("Usage: ricty_discord_generator.pe filename.ttf characters")
+   Quit()
+endif
+filename = \$argv[1]
+characters = \$argv[2]
+
+# Enable all flags
+flag_quotedbl="true"
+flag_quotesingle="true"
+flag_asterisk="true"
+flag_plus="true"
+flag_comma="true"
+flag_hyphen="true"
+flag_period="true"
+flag_0="true"
+flag_7="true"
+flag_colon="true"
+flag_semicolon="true"
+flag_less_greater="true"
+flag_equal="true"
+flag_D="true"
+flag_Z="true"
+flag_asciicircum="true"
+flag_grave="true"
+flag_l="true"
+flag_r="true"
+flag_z="true"
+flag_bar="true"
+flag_asciitilde="true"
+
+# Disable flags
+if (Strstr(characters, '"') != -1)
+    Print("Option: Disable magnified \"")
+    flag_quotedbl="false"
+endif
+if (Strstr(characters, "'") != -1)
+    Print("Option: Disable magnified \'")
+    flag_quotesingle="false"
+endif
+if (Strstr(characters, "*") != -1)
+    Print("Option: Disable * moved downward a little")
+    flag_asterisk="false"
+endif
+if (Strstr(characters, "+") != -1)
+    Print("Option: Disable + moved downward a little")
+    flag_plus="false"
+endif
+if (Strstr(characters, ",") != -1)
+    Print("Option: Disable magnified ,")
+    flag_comma="false"
+endif
+if (Strstr(characters, "-") != -1)
+    Print("Option: Disable - moved downward a little")
+    flag_hyphen="false"
+endif
+if (Strstr(characters, ".") != -1)
+    Print("Option: Disable magnified .")
+    flag_period="false"
+endif
+if (Strstr(characters, "0") != -1)
+    Print("Option: Disable dotted 0 (Inconsolata's unused glyph)")
+    flag_0="false"
+endif
+if (Strstr(characters, "7") != -1)
+    Print("Option: Disable 7 with cross-bar")
+    flag_7="false"
+endif
+if (Strstr(characters, ":") != -1)
+    Print("Option: Disable magnified :")
+    flag_colon="false"
+endif
+if (Strstr(characters, ";") != -1)
+    Print("Option: Disable magnified ;")
+    flag_semicolon="false"
+endif
+if (Strstr(characters, "<") != -1 || Strstr(characters, ">") != -1)
+    Print("Option: Disable < and > moved downward a little")
+    flag_less_greater="false"
+endif
+if (Strstr(characters, "=") != -1)
+    Print("Option: Disable = moved downward a little")
+    flag_equal="false"
+endif
+if (Strstr(characters, "D") != -1)
+    Print("Option: Disable D of Eth (D with cross-bar)")
+    flag_D="false"
+endif
+if (Strstr(characters, "Z") != -1)
+    Print("Option: Disable Z with cross-bar")
+    flag_Z="false"
+endif
+if (Strstr(characters, "^") != -1)
+    Print("Option: Disable magnified ^")
+    flag_asciicircum="false"
+endif
+if (Strstr(characters, "\`") != -1)
+    Print("Option: Disable magnified \`")
+    flag_grave="false"
+endif
+if (Strstr(characters, "l") != -1)
+    Print("Option: Disable l of cutting off left-bottom serif")
+    flag_l="false"
+endif
+if (Strstr(characters, "r") != -1)
+    Print("Option: Disable r of serif (Inconsolata's unused glyph)")
+    flag_r="false"
+endif
+if (Strstr(characters, "z") != -1)
+    Print("Option: Disable z with cross-bar")
+    flag_z="false"
+endif
+if (Strstr(characters, "|") != -1)
+    Print("Option: Disable broken | (Inconsolata's glyph)")
+    flag_bar="false"
+endif
+if (Strstr(characters, "~") != -1)
+    Print("Option: Disable ~ moved upward")
+    flag_asciitilde="false"
+endif
+
+# Check filename
+input = filename:t:r
+hyphen_index = Strrstr(input, '-')
+if (filename:e != "ttf" || hyphen_index == -1)
+    Print("Invalid argument: " + filename)
+    Quit()
+endif
+inputfamily  = Strsub(input, 0, hyphen_index)
+inputstyle   = Strsub(input, hyphen_index + 1)
+familysuffix = "Discord"
+
+Print("Generate " + inputfamily + familysuffix + "-" + inputstyle + ".ttf.")
+
+# Open file and set configuration
+Open(filename)
+Reencode("unicode")
+SetFontNames(inputfamily + familysuffix + "-" + inputstyle, \
+             \$familyname + " " + familysuffix, \
+             \$familyname + " " + familysuffix + " " + inputstyle, \
+             inputstyle)
+SetTTFName(0x409, 3, "FontForge 2.0 : " + \$fullname + " : " + Strftime("%d-%m-%Y", 0))
+
+# Edit some glyphs
+
+# " -> magnified "
+if (flag_quotedbl == "true")
+    Select(0u0022); Scale(115, 115, 250, 600); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# ' -> magnified '
+if (flag_quotesingle == "true")
+    Select(0u0027); Scale(115, 115, 250, 600); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# * -> * moved downward a little
+if (flag_asterisk == "true")
+    Select(0u002a); Move(0, -80)
+endif
+
+# + -> + moved downward a little
+if (flag_plus == "true")
+    Select(0u002b); Move(0, -80)
+endif
+
+# , -> magnified ,
+if (flag_comma == "true")
+    Select(0u002c); Scale(115, 115, 250, 0); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# - -> - moved downward a little
+if (flag_hyphen == "true")
+    Select(0u002d); Move(0, -80)
+endif
+
+# . -> magnified .
+if (flag_period == "true")
+    Select(0u002e); Scale(115, 115, 250, 0); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# 0 -> dotted 0 (Inconsolata's unused glyph)
+if (flag_0 == "true")
+    Select(65544);  Copy()
+    Select(0u0030); Paste()
+endif
+
+# 7 -> 7 with cross-bar
+if (flag_7 == "true")
+    Select(0u00af); Copy() # macron
+    Select(0u0037); PasteWithOffset(20, -263)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# : -> magnified :
+if (flag_colon == "true")
+    Select(0u003a); Scale(115, 115, 250, 0); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# ; -> magnified ;
+if (flag_semicolon == "true")
+    Select(0u003b); Scale(115, 115, 250, 0); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# < and > -> < and > moved downward a little
+if (flag_less_greater == "true")
+    Select(0u003c); Move(0, -80)
+    Select(0u003e); Move(0, -80)
+endif
+
+# = -> = moved downward a little
+if (flag_equal == "true")
+    Select(0u003d); Move(0, -80)
+endif
+
+# D -> D of Eth (D with cross-bar)
+if (flag_D == "true")
+    Select(0u0110); Copy()
+    Select(0u0044); Paste()
+endif
+
+# Z -> Z with cross-bar
+if (flag_Z == "true")
+    Select(0u00af); Copy()  # macron
+    Select(65552);  Paste() # Temporary glyph
+    Transform(100, -65, 0, 100, 0, -12000); SetWidth(500)
+    Copy()
+    Select(0u005a); PasteInto()
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+    Select(65552);  Clear() # Temporary glyph
+endif
+
+# ^ -> magnified ^
+if (flag_asciicircum == "true")
+    Select(0u005e); Scale(115, 115, 250, 600); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# \` -> magnified \`
+if (flag_grave == "true")
+    Select(0u0060); Scale(115, 115, 250, 600); SetWidth(500)
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+endif
+
+# l -> l of cutting off left-bottom serif
+if (flag_l == "true")
+    Select(0u006c); Copy()
+    Rotate(180); Move(1, 0); SetWidth(500)
+    PasteInto(); OverlapIntersect()
+endif
+
+# r -> r of serif (Inconsolata's unused glyph)
+if (flag_r == "true")
+    Select(65542);  Copy()
+    Select(0u0072); Paste()
+endif
+
+# z -> z with cross-bar
+if (flag_z == "true")
+    Select(0u00af); Copy()  # macron
+    Select(65552);  Paste() # Temporary glyph
+    Transform(75, -52, 0, 100, 5500, -23500); SetWidth(500)
+    Copy()
+    Select(0u007a); PasteInto()
+    RoundToInt(); RemoveOverlap(); RoundToInt()
+    Select(65552);  Clear() # Temporary glyph
+endif
+
+# | -> broken | (Inconsolata's glyph)
+if (flag_bar == "true")
+    Select(0u00a6); Copy()
+    Select(0u007c); Paste()
+endif
+
+# ~ -> ~ moved upward
+if (flag_asciitilde == "true")
+    Select(0u007e); Move(0, 120)
+endif
+
+# Generate
+Generate(inputfamily + familysuffix + "-" + inputstyle + ".ttf", "", 0x84)
+Close()
 
 Quit()
 _EOT_
@@ -560,22 +1039,18 @@ $fontforge_command -script ${tmpdir}/${modified_migu1m_generator} \
     2> $redirection_stderr || exit 4
 $fontforge_command -script ${tmpdir}/${ricty_generator} \
     2> $redirection_stderr || exit 4
+$fontforge_command -script ${tmpdir}/${ricty_discord_generator} \
+    ${ricty_familyname}${ricty_familyname_suffix}-Regular.ttf "${non_discorded_characters}" \
+    2> $redirection_stderr || exit 4
+$fontforge_command -script ${tmpdir}/${ricty_discord_generator} \
+    ${ricty_familyname}${ricty_familyname_suffix}-Bold.ttf "${non_discorded_characters}" \
+    2> $redirection_stderr || exit 4
 
 # Remove temporary directory
 if [ "$leaving_tmp_flag" = "false" ]
 then
     echo "Remove temporary files."
     rm -rf $tmpdir
-fi
-
-# Generate Ricty Discord (if the script exists)
-path2discord_converter=$(dirname $0)/ricty_discord_converter.pe
-if [ -r "$path2discord_converter" ]
-then
-    $fontforge_command -script $path2discord_converter \
-        ${ricty_familyname}${ricty_familyname_suffix}-Regular.ttf \
-        ${ricty_familyname}${ricty_familyname_suffix}-Bold.ttf \
-        2> $redirection_stderr || exit 4
 fi
 
 # Exit
