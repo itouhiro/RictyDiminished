@@ -1,22 +1,33 @@
 # プログラミング用フォント Ricty Diminished
 
-Ricty Diminished (リクティ・ディミニッシュト) は [Ricty](https://github.com/yascentur/Ricty) の姉妹フォントであり、[Inconsolata](http://levien.com/type/myfonts/inconsolata.html) と [Migu 1M](http://mix-mplus-ipa.sourceforge.jp/) ではなく、[Inconsolata](http://levien.com/type/myfonts/inconsolata.html) と [Circle M+ 1m](http://mix-mplus-ipa.sourceforge.jp/) を Ricty 生成スクリプトで合成したフォントです。
-IPA ゴシックのグリフを含まないため、使用可能な漢字グリフの数が少ない代わり、[SIL Open Font License](http://scripts.sil.org/ofl) の下で配布が可能です。
+[Ricty Diminished（リクティ・ディミニッシュト）](https://rictyfonts.github.io/diminished) は [Ricty](https://rictyfonts.github.io/) の姉妹フォントであり、 Linux 環境での研究・開発を想定したプログラミング用フォントです。テキストエディタやターミナルエミュレータ、プログラミング言語やマークアップ言語に対する使用に適しています。[Inconsolata](http://levien.com/type/myfonts/inconsolata.html) と [Circle M+ 1m](http://mix-mplus-ipa.osdn.jp/) の合成、および、プログラミング用フォントとしてのいくつかのチューニングを行ったフリーな TrueType フォントを配布しています。JIS 第二水準の漢字が不足しているため Ricty Diminished と命名しました。
+
+また、JIS 第四水準の漢字をサポートする姉妹フォント [Ricty](https://rictyfonts.github.io/) は生成スクリプトを配布しています。
 
 # 特徴
 
-* ラテン文字には Raph Levien 氏の Inconsolata が適用されます。
-* それ以外の文字には Circle M+ 1m が適用されます。美しい M+ と itouhiro 氏が改良された視認性の高い日本語文字 (半濁音など) が使用できます。
+* ラテン文字には [Inconsolata](http://levien.com/type/myfonts/inconsolata.html) が適用されます。
+* それ以外の文字には [Circle M+ 1m](http://mix-mplus-ipa.osdn.jp/) が適用されます。[M+ M Type-1](http://mplus-fonts.osdn.jp/) の美しいグリフと Circle M+ 1m の判読性の高い和文文字（半濁音など）が使用できます。
 * 半角文字と全角文字の横幅の比が 1:2 に調整されています。
 * 全角スペースが可視化されます。
 * いくつかの全角グリフが対応する半角グリフと差別化されています。
 * en ダッシュ、em ダッシュが破断線のようになります (LaTeX での入力ミス防止のため)。
 
+# 派生フォント Ricty Diminished Discord
+
+[Ricty](https://rictyfonts.github.io/) と同様に、Ricty Diminished にも Discord（不協和音）版が存在します。Ricty Diminished Discord は、判読性向上のため、調和・統一感を犠牲にして、プログラミング用フォントのコアである Inconsolata 由来の ASCII 文字に手を入れた Ricty Diminished の派生フォントです。
+
 # ライセンス
 
-* Ricty Diminished は [SIL Open Font License (OFL) Version 1.1](http://scripts.sil.org/ofl) に従うものとします。
+* Ricty Diminished および Ricty Diminished Discord は [SIL Open Font License (OFL) Version 1.1](http://scripts.sil.org/ofl) に従うものとします。
 
 # バージョン
+
+## Version 4.1.1 (3 Dec 2017)
+
+* Ricty 生成スクリプト 4.1.1
+* Inconsolata 2.000
+* Circle M+ 1m 1.060
 
 ## Version 4.1.0 (30 Dec 2016)
 
