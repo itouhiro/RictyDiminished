@@ -2,7 +2,7 @@
 
 #
 # Ricty Generator
-ricty_version="4.1.1"
+ricty_version="4.1.1.20200415"
 #
 
 #
@@ -589,11 +589,9 @@ fontweight_list   = [400,       700]
 panoseweight_list = [5,         8]
 copyright         = "Copyright (c) 2011-2017 Yasunori Yusa\n" \\
                   + "Copyright (c) 2006 The Inconsolata Project Authors\n" \\
-                  + "Copyright (c) 2015 itouhiro\n" \\
-                  + "Copyright (c) 2015 M+ FONTS PROJECT\n" \\
-                  + "Copyright (c) 2003-2011 Information-technology Promotion Agency, Japan (IPA)\n" \\
-                  + "SIL Open Font License Version 1.1 (http://scripts.sil.org/ofl)\n" \\
-                  + "IPA Font License Agreement v1.0 (http://ipafont.ipa.go.jp/ipa_font_license_v1.html)"
+                  + "Copyright (c) 2020 itouhiro\n" \\
+                  + "Copyright (C) 2002-2019 M+ FONTS PROJECT\n" \\
+                  + "SIL Open Font License Version 1.1 (http://scripts.sil.org/ofl)"
 version           = "${ricty_version}"
 
 # Begin loop of regular and bold
@@ -700,16 +698,16 @@ while (i < SizeOf(fontstyle_list))
     DetachAndRemoveGlyphs()
     SelectWorthOutputting()
     RoundToInt(); RemoveOverlap(); RoundToInt()
-    AutoHint()
-    AutoInstr()
+    ClearHints()
+    ClearInstrs()
 
     # Save Ricty
     if (fontfamilysuffix != "")
         Print("Save " + fontfamily + fontfamilysuffix + "-" + fontstyle_list[i] + ".ttf")
-        Generate(fontfamily + fontfamilysuffix + "-" + fontstyle_list[i] + ".ttf", "", 0x84)
+        Generate(fontfamily + fontfamilysuffix + "-" + fontstyle_list[i] + ".ttf", "", 0x8c)
     else
         Print("Save " + fontfamily + "-" + fontstyle_list[i] + ".ttf")
-        Generate(fontfamily + "-" + fontstyle_list[i] + ".ttf", "", 0x84)
+        Generate(fontfamily + "-" + fontstyle_list[i] + ".ttf", "", 0x8c)
     endif
     Close()
 
@@ -1011,7 +1009,7 @@ endif
 
 # Save Ricty Discord
 Print("Save " + inputfamily + familysuffix + "-" + inputstyle + ".ttf")
-Generate(inputfamily + familysuffix + "-" + inputstyle + ".ttf", "", 0x84)
+Generate(inputfamily + familysuffix + "-" + inputstyle + ".ttf", "", 0x8c)
 Close()
 
 Quit()
@@ -1078,7 +1076,7 @@ RoundToInt()
 RemoveOverlap()
 RoundToInt()
 
-Generate(output_family + "-" + output_style + ".ttf", "", 0x84)
+Generate(output_family + "-" + output_style + ".ttf", "", 0x8c)
 Close()
 
 i += 1
